@@ -44,22 +44,36 @@ class FlickAccessibilityService : AccessibilityService() {
             FlickApp.instance.actionDispatcher.dispatchGesture(edge, gesture)
         }
 
-        // Observe triggers and master service toggle
+        // Observe triggers, master service toggle, and physics settings
         serviceScope.launch {
             combine(
                 FlickApp.instance.servicePreferences.triggers,
-                FlickApp.instance.servicePreferences.isServiceEnabled
-            ) { triggers, isEnabled ->
-                triggers to isEnabled
-            }.collectLatest { (triggers, isEnabled) ->
-                overlayManager?.updateOverlays(triggers, isEnabled)
-                val activeCount = if (isEnabled) triggers.size else 0
+                FlickApp.instance.servicePreferences.isServiceEnabled,
+                FlickApp.instance.servicePreferences.pullDistanceDp,
+                FlickApp.instance.servicePreferences.holdDurationMs
+            ) { triggers, isEnabled, pullDist, holdMs ->
+                OverlayConfig(triggers, isEnabled, pullDist, holdMs)
+            }.collectLatest { config ->
+                overlayManager?.updateOverlays(
+                    triggers = config.triggers,
+                    isServiceEnabled = config.isEnabled,
+                    pullDistanceDp = config.pullDistance,
+                    holdDurationMs = config.holdDuration
+                )
+                val activeCount = if (config.isEnabled) config.triggers.size else 0
                 val notification = NotificationHelper.buildNotification(this@FlickAccessibilityService, activeCount)
                 val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
                 nm.notify(NotificationHelper.NOTIFICATION_ID, notification)
             }
         }
     }
+
+    private data class OverlayConfig(
+        val triggers: List<me.ammar.flick.model.TriggerModel>,
+        val isEnabled: Boolean,
+        val pullDistance: Int,
+        val holdDuration: Long
+    )
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Accessibility event processing if needed

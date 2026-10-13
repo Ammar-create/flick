@@ -55,15 +55,41 @@ object ScreenshotManager {
                     }
 
                     override fun onFailure(errorCode: Int) {
-                        Log.e(TAG, "Accessibility takeScreenshot failed with code: $errorCode")
-                        mainHandler.post {
-                            Toast.makeText(service, "Failed to capture screen", Toast.LENGTH_SHORT).show()
-                        }
+                        Log.e(TAG, "Accessibility takeScreenshot failed with code: $errorCode, trying Shizuku fallback")
+                        tryShizukuFallback(service)
                     }
                 }
             )
         } catch (t: Throwable) {
-            Log.e(TAG, "Failed to take screenshot", t)
+            Log.e(TAG, "Failed to take screenshot via Accessibility, trying Shizuku fallback", t)
+            tryShizukuFallback(service)
+        }
+    }
+
+    private fun tryShizukuFallback(service: AccessibilityService) {
+        executor.execute {
+            try {
+                val tempFile = File(service.cacheDir, "shizuku_snip.png")
+                val cmd = "screencap -p ${tempFile.absolutePath}"
+                kotlinx.coroutines.runBlocking {
+                    me.ammar.flick.engine.ShizukuBridge.executeCommand(cmd)
+                }
+                if (tempFile.exists() && tempFile.length() > 0) {
+                    val bitmap = android.graphics.BitmapFactory.decodeFile(tempFile.absolutePath)
+                    tempFile.delete()
+                    if (bitmap != null) {
+                        mainHandler.post {
+                            showFloatingBar(service, bitmap)
+                        }
+                        return@execute
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Shizuku fallback screencap failed", t)
+            }
+            mainHandler.post {
+                Toast.makeText(service, "Failed to capture screen", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -86,6 +112,7 @@ object ScreenshotManager {
 
         val params = WindowManager.LayoutParams().apply {
             type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
             format = PixelFormat.TRANSLUCENT

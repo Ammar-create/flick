@@ -33,6 +33,8 @@ class UbikiWaveOverlayView(
     val maxToPct: Int,
     val thicknessPx: Int,
     val scriptName: String,
+    val pullDistanceDp: Int = 40,
+    val holdDurationMs: Long = 700L,
     private val windowManager: WindowManager,
     private val idleLayoutParams: WindowManager.LayoutParams,
     private val onGestureAction: (edge: String, gesture: String) -> Unit
@@ -43,9 +45,9 @@ class UbikiWaveOverlayView(
 
     // Physics constants
     private val waveHeightHalf = 120f * density
-    private val minPullToPrime = 95f * density // Generous pull distance to avoid native edge back clash
-    private val maxPullRadius = 240f * density
-    private val longHoldMs = 1500L // 1.5 seconds inward hold to prime
+    private val minPullToPrime = pullDistanceDp.toFloat() * density
+    private val maxPullRadius = (pullDistanceDp * 2.8f).coerceAtLeast(100f) * density
+    private val longHoldMs = holdDurationMs
 
     // State
     private var isDragging = false
@@ -252,7 +254,7 @@ class UbikiWaveOverlayView(
                 // Check pull distance
                 if (pull >= minPullToPrime && !isPrimed && !actionDispatched) {
                     val duration = SystemClock.uptimeMillis() - startTime
-                    if (duration >= 900L) {
+                    if (duration >= (longHoldMs * 0.7f).toLong()) {
                         isPrimed = true
                         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                     }
@@ -270,18 +272,18 @@ class UbikiWaveOverlayView(
                 val pull = calculatePullDistance()
                 val dy = currentY - startY
 
-                // Accidental touch / tapping prevention: must pull inward substantially
-                if (pull < minPullToPrime && abs(dy) < 100f * density) {
-                    // Ignored accidental touch or stationary hold
+                // Accidental touch / tapping prevention: must pull inward at least 60% of minPullToPrime
+                if (pull < minPullToPrime * 0.6f && abs(dy) < 80f * density) {
+                    // Ignored accidental touch or stationary tap
                     resetToIdle()
                     return true
                 }
 
                 val recognizedGesture: String = when {
-                    abs(dy) > 120f * density && abs(dy) > pull * 1.5f -> {
+                    abs(dy) > 100f * density && abs(dy) > pull * 1.4f -> {
                         if (dy < 0) "swipe-up" else "swipe-down"
                     }
-                    isPrimed || duration >= 1200L -> {
+                    isPrimed || duration >= longHoldMs -> {
                         "swipe-hold"
                     }
                     else -> {

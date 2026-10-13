@@ -85,6 +85,38 @@ class ActionDispatcher(
         }
     }
 
+    fun dispatchDirectAction(actionName: String) {
+        scope.launch {
+            Log.i(TAG, "Dispatching direct action: $actionName")
+            val extensionFile = repoSyncManager.getExtensionFile(actionName)
+            val outcome: String
+
+            if (extensionFile != null && extensionFile.exists()) {
+                val scriptCode = extensionFile.readText()
+                quickJsRunner.executeScript(scriptCode)
+                outcome = "Executed $actionName.js via QuickJS"
+            } else {
+                val dummyTrigger = TriggerModel(
+                    id = "direct-$actionName",
+                    edge = "overlay",
+                    gesture = "tap",
+                    script = actionName
+                )
+                outcome = executeV1Fallback(dummyTrigger)
+            }
+
+            addLog(
+                GestureEventLog(
+                    triggerId = "direct",
+                    edge = "overlay",
+                    gesture = "tap",
+                    script = actionName,
+                    outcome = outcome
+                )
+            )
+        }
+    }
+
     private fun executeV1Fallback(trigger: TriggerModel): String {
         return when (trigger.script) {
             "snip-to-clipboard" -> {
@@ -92,6 +124,58 @@ class ActionDispatcher(
                 if (service != null) {
                     ScreenshotManager.triggerSnipWorkflow(service)
                     "Screenshot captured: 5s crop bar displayed"
+                } else {
+                    bridge.toast("Accessibility service not connected")
+                    "Error: Service not connected"
+                }
+            }
+            "ask-lastchat" -> {
+                val text = bridge.getSelectedText().ifBlank { bridge.getClipboard() }
+                if (text.isBlank()) {
+                    bridge.toast("Select text first or copy text to clipboard")
+                    "No text available for Ask LastChat"
+                } else {
+                    bridge.processText(
+                        text = text,
+                        targetPkg = "lastchat.rikkafork.cocolal",
+                        targetCls = "me.rerere.rikkahub.ui.activity.TextSelectionActivity"
+                    )
+                    "Launched Ask LastChat with ${text.length} chars"
+                }
+            }
+            "floating-toolbox" -> {
+                val service = accessibilityServiceSupplier()
+                if (service != null) {
+                    val config = me.ammar.flick.service.overlay.OverlayMenuConfig(
+                        title = "Flick Quick Actions",
+                        subtitle = "Select an action to execute",
+                        items = listOf(
+                            me.ammar.flick.service.overlay.OverlayMenuItem(
+                                id = "snip",
+                                title = "Snip Screen to Clipboard",
+                                subtitle = "In-memory crop & copy",
+                                action = "snip-to-clipboard"
+                            ),
+                            me.ammar.flick.service.overlay.OverlayMenuItem(
+                                id = "ask",
+                                title = "Ask LastChat",
+                                subtitle = "Process selected or clipboard text",
+                                action = "ask-lastchat"
+                            ),
+                            me.ammar.flick.service.overlay.OverlayMenuItem(
+                                id = "abdm",
+                                title = "Add Download to AB",
+                                subtitle = "Download URL from clipboard",
+                                action = "abdm-add-download"
+                            )
+                        )
+                    )
+                    me.ammar.flick.service.overlay.FloatingOnScreenOverlayManager.show(service, config) { item ->
+                        if (!item.action.isNullOrBlank()) {
+                            dispatchDirectAction(item.action)
+                        }
+                    }
+                    "Displayed on-screen toolbox"
                 } else {
                     bridge.toast("Accessibility service not connected")
                     "Error: Service not connected"

@@ -24,19 +24,29 @@ class QuickJsRunner(private val bridge: HostBridgeInterface) {
                 };
                 const ui = {
                     toast: (msg) => __bridge.toast(msg),
+                    copy: (txt) => __bridge.setClipboard(txt),
+                    clipboard: () => __bridge.getClipboard(),
+                    selectedText: () => __bridge.getSelectedText(),
+                    screenText: () => __bridge.getScreenText(),
+                    overlay: (cfg) => __bridge.showOverlay(JSON.stringify(cfg)),
+                    dismissOverlay: () => __bridge.dismissOverlay(),
                     find: (query) => {
                         const res = __bridge.findNode(JSON.stringify(query));
                         return res ? JSON.parse(res) : null;
                     },
                     tap: (node) => __bridge.tapNode(JSON.stringify(node))
                 };
-                const http = {
-                    get: (url) => __bridge.httpGet(url),
-                    post: (url, body) => __bridge.httpPost(url, typeof body === 'string' ? body : JSON.stringify(body))
+                const intent = {
+                    processText: (txt, pkg, cls) => __bridge.processText(txt, pkg || null, cls || null),
+                    launch: (comp) => __bridge.launch(comp)
                 };
                 const capture = {
                     region: () => __bridge.captureSnip(),
                     snip: () => __bridge.captureSnip()
+                };
+                const http = {
+                    get: (url) => __bridge.httpGet(url),
+                    post: (url, body) => __bridge.httpPost(url, typeof body === 'string' ? body : JSON.stringify(body))
                 };
                 const log = (msg) => __bridge.toast(String(msg));
             """.trimIndent()

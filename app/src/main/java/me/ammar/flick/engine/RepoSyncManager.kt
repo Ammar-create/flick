@@ -51,7 +51,31 @@ class RepoSyncManager(private val context: Context) {
         get() = File(context.filesDir, "extensions").apply { mkdirs() }
 
     init {
+        initializeBundledPlugins()
         loadCachedManifest()
+    }
+
+    private fun initializeBundledPlugins() {
+        try {
+            val manifestFile = File(context.filesDir, "repo.json")
+            if (!manifestFile.exists()) {
+                val bundledManifest = context.assets.open("repo.json").bufferedReader().use { it.readText() }
+                manifestFile.writeText(bundledManifest)
+            }
+            val assetList = context.assets.list("extensions") ?: emptyArray()
+            for (assetName in assetList) {
+                val targetFile = File(extensionsDir, assetName)
+                if (!targetFile.exists()) {
+                    context.assets.open("extensions/$assetName").use { input ->
+                        targetFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to unpack bundled plugins", t)
+        }
     }
 
     fun getExtensionFile(pluginId: String): File? {

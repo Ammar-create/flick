@@ -21,7 +21,12 @@ class EdgeOverlayManager(
     private val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val activeViews = mutableListOf<View>()
 
-    fun updateOverlays(triggers: List<TriggerModel>, isServiceEnabled: Boolean) {
+    fun updateOverlays(
+        triggers: List<TriggerModel>,
+        isServiceEnabled: Boolean,
+        pullDistanceDp: Int = 40,
+        holdDurationMs: Long = 700L
+    ) {
         removeOverlays()
 
         if (!isServiceEnabled) {
@@ -85,6 +90,8 @@ class EdgeOverlayManager(
                 maxToPct = maxTo,
                 thicknessPx = thicknessPx,
                 scriptName = primaryScript,
+                pullDistanceDp = pullDistanceDp,
+                holdDurationMs = holdDurationMs,
                 windowManager = windowManager,
                 idleLayoutParams = idleParams,
                 onGestureAction = onGestureAction

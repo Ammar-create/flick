@@ -27,6 +27,8 @@ data class MainUiState(
     val isShizukuAvailable: Boolean = false,
     val hasShizukuPermission: Boolean = false,
     val isBatteryOptimizedIgnored: Boolean = false,
+    val pullDistanceDp: Int = 40,
+    val holdDurationMs: Long = 700L,
     val triggers: List<TriggerModel> = emptyList(),
     val installedPlugins: List<PluginEntry> = emptyList(),
     val syncState: SyncState = SyncState.Idle,
@@ -67,19 +69,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         Pair(plugins, sync)
     }
 
+    private val physicsFlow = combine(
+        servicePreferences.pullDistanceDp,
+        servicePreferences.holdDurationMs
+    ) { dist, hold ->
+        dist to hold
+    }
+
     val uiState: StateFlow<MainUiState> = combine(
         serviceStatusFlow,
         servicePreferences.triggers,
         repoFlow,
-        actionDispatcher.recentLogs
-    ) { status, triggers, repoData, logs ->
+        actionDispatcher.recentLogs,
+        physicsFlow
+    ) { status, triggers, repoData, logs, physics ->
         val (plugins, sync) = repoData
+        val (dist, hold) = physics
         MainUiState(
             isAccessibilityActive = status.isAccessibilityActive,
             isServiceMasterEnabled = status.isMasterEnabled,
             isShizukuAvailable = status.isShizukuAvailable,
             hasShizukuPermission = status.hasShizukuPermission,
             isBatteryOptimizedIgnored = status.isBatteryOptimizedIgnored,
+            pullDistanceDp = dist,
+            holdDurationMs = hold,
             triggers = triggers,
             installedPlugins = plugins,
             syncState = sync,
@@ -98,6 +111,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleServiceMasterEnabled(enabled: Boolean) {
         servicePreferences.setServiceEnabled(enabled)
+    }
+
+    fun setPullDistanceDp(dist: Int) {
+        servicePreferences.setPullDistanceDp(dist)
+    }
+
+    fun setHoldDurationMs(duration: Long) {
+        servicePreferences.setHoldDurationMs(duration)
     }
 
     fun addOrUpdateTrigger(trigger: TriggerModel) {

@@ -25,15 +25,20 @@ import java.util.concurrent.TimeUnit
 interface HostBridgeInterface {
     fun shell(cmd: String): String
     fun launch(component: String)
+    fun processText(text: String, targetPkg: String?, targetCls: String?)
     fun sleep(ms: Long)
     fun getClipboard(): String
     fun setClipboard(text: String)
     fun toast(msg: String)
+    fun getSelectedText(): String
+    fun getScreenText(): String
     fun findNode(queryJson: String): String?
     fun tapNode(nodeJson: String): Boolean
     fun httpGet(url: String): String
     fun httpPost(url: String, body: String): String
     fun captureSnip(): Boolean
+    fun showOverlay(configJson: String): Boolean
+    fun dismissOverlay(): Boolean
 }
 
 class ScriptBridge(
@@ -178,11 +183,100 @@ class ScriptBridge(
         }
     }
 
+    override fun processText(text: String, targetPkg: String?, targetCls: String?) {
+        mainHandler.post {
+            try {
+                val intent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_PROCESS_TEXT, text)
+                    putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true)
+                    if (!targetPkg.isNullOrBlank()) {
+                        if (!targetCls.isNullOrBlank()) {
+                            setClassName(targetPkg, targetCls)
+                        } else {
+                            setPackage(targetPkg)
+                        }
+                    }
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (t: Throwable) {
+                Log.e(TAG, "processText failed", t)
+                toast("Failed to process text: ${t.message}")
+            }
+        }
+    }
+
+    override fun getSelectedText(): String {
+        val service = accessibilityServiceSupplier() ?: return ""
+        val root = service.rootInActiveWindow ?: return ""
+        try {
+            val focused = service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                ?: service.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)
+            if (focused != null) {
+                val txt = focused.text?.toString()
+                val selStart = focused.textSelectionStart
+                val selEnd = focused.textSelectionEnd
+                if (txt != null && selStart >= 0 && selEnd > selStart) {
+                    return txt.substring(selStart, selEnd)
+                }
+                if (!txt.isNullOrBlank()) {
+                    return txt
+                }
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "getSelectedText error", t)
+        }
+        return ""
+    }
+
+    override fun getScreenText(): String {
+        val service = accessibilityServiceSupplier() ?: return ""
+        val root = service.rootInActiveWindow ?: return ""
+        val sb = StringBuilder()
+        collectText(root, sb)
+        return sb.toString().trim()
+    }
+
+    private fun collectText(node: AccessibilityNodeInfo, sb: StringBuilder) {
+        val txt = node.text?.toString() ?: node.contentDescription?.toString()
+        if (!txt.isNullOrBlank()) {
+            sb.append(txt).append("\n")
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            collectText(child, sb)
+        }
+    }
+
     override fun captureSnip(): Boolean {
         val service = accessibilityServiceSupplier() ?: return false
         mainHandler.post {
             me.ammar.flick.service.screenshot.ScreenshotManager.triggerSnipWorkflow(service)
         }
+        return true
+    }
+
+    override fun showOverlay(configJson: String): Boolean {
+        val service = accessibilityServiceSupplier() ?: return false
+        return try {
+            val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
+            val config = jsonParser.decodeFromString<me.ammar.flick.service.overlay.OverlayMenuConfig>(configJson)
+            me.ammar.flick.service.overlay.FloatingOnScreenOverlayManager.show(service, config) { item ->
+                if (!item.action.isNullOrBlank()) {
+                    me.ammar.flick.FlickApp.instance.actionDispatcher.dispatchDirectAction(item.action)
+                }
+            }
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "showOverlay error", t)
+            false
+        }
+    }
+
+    override fun dismissOverlay(): Boolean {
+        val service = accessibilityServiceSupplier() ?: return false
+        me.ammar.flick.service.overlay.FloatingOnScreenOverlayManager.dismiss(service)
         return true
     }
 

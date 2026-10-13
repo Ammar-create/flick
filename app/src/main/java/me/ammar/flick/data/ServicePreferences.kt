@@ -16,12 +16,30 @@ class ServicePreferences(private val context: Context) {
     private val _isServiceEnabled = MutableStateFlow(prefs.getBoolean(KEY_SERVICE_ENABLED, true))
     val isServiceEnabled = _isServiceEnabled.asStateFlow()
 
+    private val _pullDistanceDp = MutableStateFlow(prefs.getInt(KEY_PULL_DISTANCE, 40))
+    val pullDistanceDp = _pullDistanceDp.asStateFlow()
+
+    private val _holdDurationMs = MutableStateFlow(prefs.getLong(KEY_HOLD_DURATION, 700L))
+    val holdDurationMs = _holdDurationMs.asStateFlow()
+
     private val _triggers = MutableStateFlow<List<TriggerModel>>(loadTriggersInternal())
     val triggers = _triggers.asStateFlow()
 
     fun setServiceEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_SERVICE_ENABLED, enabled).apply()
         _isServiceEnabled.value = enabled
+    }
+
+    fun setPullDistanceDp(distance: Int) {
+        val clamped = distance.coerceIn(24, 100)
+        prefs.edit().putInt(KEY_PULL_DISTANCE, clamped).apply()
+        _pullDistanceDp.value = clamped
+    }
+
+    fun setHoldDurationMs(duration: Long) {
+        val clamped = duration.coerceIn(300L, 2000L)
+        prefs.edit().putLong(KEY_HOLD_DURATION, clamped).apply()
+        _holdDurationMs.value = clamped
     }
 
     fun saveTriggers(triggersList: List<TriggerModel>) {
@@ -71,5 +89,7 @@ class ServicePreferences(private val context: Context) {
 
     companion object {
         private const val KEY_SERVICE_ENABLED = "flick_service_enabled"
+        private const val KEY_PULL_DISTANCE = "flick_pull_distance"
+        private const val KEY_HOLD_DURATION = "flick_hold_duration"
     }
 }

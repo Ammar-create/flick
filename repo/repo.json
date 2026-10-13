@@ -16,12 +16,32 @@
     {
       "id": "snip-to-clipboard",
       "name": "Snip to Clipboard",
-      "version": "0.0.1",
+      "version": "1.0.0",
       "api": 1,
       "author": "Ammar",
-      "description": "STUB. Region capture straight to the clipboard, no gallery file. Needs a host-side capture call (v2).",
+      "description": "Region capture straight to the clipboard, no gallery file.",
       "file": "extensions/snip-to-clipboard.js",
       "hash": "sha256:cd8f983ae9f117b2c4b3308fc5b0c727abacd69787ae8eff115efd28e6138fb6"
+    },
+    {
+      "id": "ask-lastchat",
+      "name": "Ask LastChat",
+      "version": "1.0.0",
+      "api": 1,
+      "author": "Ammar",
+      "description": "Send selected text or clipboard to LastChat assistant.",
+      "file": "extensions/ask-lastchat.js",
+      "hash": "sha256:ef9f11882dddfde1347ef14c8d7b5dd9d9fbd7e281f17119b7310bfc3ce720c5"
+    },
+    {
+      "id": "floating-toolbox",
+      "name": "Floating Toolbox",
+      "version": "1.0.0",
+      "api": 1,
+      "author": "Ammar",
+      "description": "On-screen floating quick action panel for screenshots, Ask LastChat, and tools.",
+      "file": "extensions/floating-toolbox.js",
+      "hash": "sha256:774dedd5e997c4cabe7e8ab108fbdac287bdcc936ec76703ba634b39aab6fff6"
     }
   ]
 }

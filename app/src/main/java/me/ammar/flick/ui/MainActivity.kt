@@ -182,6 +182,10 @@ fun MainScreen(viewModel: MainViewModel) {
                 0 -> DashboardTab(state, viewModel, onNavigateToZones = { selectedTab = 1 })
                 1 -> ZoneEditorTab(
                     triggers = state.triggers,
+                    pullDistanceDp = state.pullDistanceDp,
+                    holdDurationMs = state.holdDurationMs,
+                    onUpdatePullDistance = { viewModel.setPullDistanceDp(it) },
+                    onUpdateHoldDuration = { viewModel.setHoldDurationMs(it) },
                     onEdit = { editingTrigger = it },
                     onDelete = { viewModel.deleteTrigger(it.id) },
                     onAddNew = { isAddingNewTrigger = true },
@@ -555,6 +559,10 @@ private fun DashboardTab(
 @Composable
 private fun ZoneEditorTab(
     triggers: List<TriggerModel>,
+    pullDistanceDp: Int,
+    holdDurationMs: Long,
+    onUpdatePullDistance: (Int) -> Unit,
+    onUpdateHoldDuration: (Long) -> Unit,
     onEdit: (TriggerModel) -> Unit,
     onDelete: (TriggerModel) -> Unit,
     onAddNew: () -> Unit,
@@ -570,6 +578,57 @@ private fun ZoneEditorTab(
             Spacer(modifier = Modifier.height(AppSpacing.xs))
             SectionTitle("VISUAL ZONE POSITION PREVIEW")
             DeviceScreenSchematic(triggers = triggers)
+        }
+
+        item {
+            SectionTitle("SWIPE SENSITIVITY & REACH")
+            GroupedCard(position = GroupedPosition.Single) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Swipe Inward Reach: ${pullDistanceDp}dp",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Controls how far into the screen you must pull your finger. Lower values require much less physical stretching (ideal for tablets).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Slider(
+                        value = pullDistanceDp.toFloat(),
+                        onValueChange = { onUpdatePullDistance(it.toInt()) },
+                        valueRange = 24f..100f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Hold Trigger Delay: ${holdDurationMs}ms",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "How long you hold after swiping inward before releasing to activate the trigger.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Slider(
+                        value = holdDurationMs.toFloat(),
+                        onValueChange = { onUpdateHoldDuration(it.toLong()) },
+                        valueRange = 300f..2000f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
+            }
         }
 
         item {
@@ -935,7 +994,7 @@ private fun TriggerEditDialog(
 
                 // Action / Script Picker
                 Text("Trigger Action / Plugin", style = MaterialTheme.typography.labelMedium)
-                val actionOptions = mutableListOf("abdm-add-download", "snip-to-clipboard")
+                val actionOptions = mutableListOf("abdm-add-download", "snip-to-clipboard", "ask-lastchat", "floating-toolbox")
                 availablePlugins.forEach { if (!actionOptions.contains(it.id)) actionOptions.add(it.id) }
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -955,6 +1014,8 @@ private fun TriggerEditDialog(
                                 text = when (act) {
                                     "abdm-add-download" -> "AB Download Manager (Add Download)"
                                     "snip-to-clipboard" -> "Snip Screenshot to Clipboard"
+                                    "ask-lastchat" -> "Ask LastChat (Selected or Clipboard Text)"
+                                    "floating-toolbox" -> "Floating On-Screen Toolbox"
                                     else -> act
                                 },
                                 style = MaterialTheme.typography.bodySmall,
