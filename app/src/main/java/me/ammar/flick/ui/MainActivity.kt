@@ -238,7 +238,7 @@ private fun HeaderSection(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "flick",
+                text = "Flick",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

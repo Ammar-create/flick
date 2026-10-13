@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">flick</string>
-    <string name="accessibility_service_name">flick Edge Gesture Service</string>
+    <string name="app_name">Flick</string>
+    <string name="accessibility_service_name">Flick Edge Gesture Service</string>
     <string name="accessibility_service_description">Monitors edge gestures to trigger custom userscript extensions without modifying system navigation.</string>
 </resources>

@@ -20,6 +20,7 @@ class EdgeOverlayManager(
 
     private val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val activeViews = mutableListOf<View>()
+    private var feedbackWaveView: FeedbackWaveOverlayView? = null
 
     fun updateOverlays(
         triggers: List<TriggerModel>,
@@ -29,8 +30,8 @@ class EdgeOverlayManager(
     ) {
         removeOverlays()
 
-        if (!isServiceEnabled) {
-            Log.i(TAG, "Master toggle disabled: no overlays attached")
+        if (!isServiceEnabled || triggers.isEmpty()) {
+            Log.i(TAG, "Master toggle disabled or no triggers: no overlays attached")
             return
         }
 
@@ -40,17 +41,38 @@ class EdgeOverlayManager(
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
 
-        // Group triggers by edge
+        // 1. Create and attach full-screen visual feedback wave overlay (FLAG_NOT_TOUCHABLE)
+        val waveView = FeedbackWaveOverlayView(service)
+        val waveParams = WindowManager.LayoutParams().apply {
+            type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+            format = PixelFormat.TRANSLUCENT
+            width = WindowManager.LayoutParams.MATCH_PARENT
+            height = WindowManager.LayoutParams.MATCH_PARENT
+            gravity = Gravity.TOP or Gravity.LEFT
+        }
+
+        try {
+            windowManager.addView(waveView, waveParams)
+            feedbackWaveView = waveView
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to attach FeedbackWaveOverlayView", t)
+        }
+
+        val activeWave = feedbackWaveView ?: waveView
+
+        // 2. Attach fixed edge touch zone detectors
         val grouped = triggers.groupBy { it.edge.lowercase() }
 
         for ((edge, edgeTriggers) in grouped) {
             val minFrom = edgeTriggers.minOfOrNull { it.fromPct } ?: 20
             val maxTo = edgeTriggers.maxOfOrNull { it.toPct } ?: 65
-            // Slim thickness (default 16dp) hugging outer bezel to keep screen apps 100% clickable
-            val thickness = edgeTriggers.maxOfOrNull { it.thicknessPx } ?: 16
+            val thickness = edgeTriggers.maxOfOrNull { it.thicknessPx } ?: 22
             val thicknessPx = (thickness * displayMetrics.density).toInt().coerceIn(
-                (8 * displayMetrics.density).toInt(),
-                (32 * displayMetrics.density).toInt()
+                (12 * displayMetrics.density).toInt(),
+                (36 * displayMetrics.density).toInt()
             )
 
             val primaryScript = edgeTriggers.firstOrNull()?.script ?: ""
@@ -86,7 +108,7 @@ class EdgeOverlayManager(
                 }
             }
 
-            val waveOverlay = UbikiWaveOverlayView(
+            val touchZone = UbikiWaveOverlayView(
                 context = service,
                 edge = edge,
                 minFromPct = minFrom,
@@ -95,17 +117,16 @@ class EdgeOverlayManager(
                 scriptName = primaryScript,
                 pullDistanceDp = pullDistanceDp,
                 holdDurationMs = holdDurationMs,
-                windowManager = windowManager,
-                idleLayoutParams = idleParams,
+                feedbackWave = activeWave,
                 onGestureAction = onGestureAction
             )
 
             try {
-                windowManager.addView(waveOverlay, idleParams)
-                activeViews.add(waveOverlay)
-                Log.i(TAG, "Attached UbikiTouch wave overlay for edge: $edge ($minFrom% - $maxTo%, ${thicknessPx}px radius)")
+                windowManager.addView(touchZone, idleParams)
+                activeViews.add(touchZone)
+                Log.i(TAG, "Attached edge touch detector for $edge: $minFrom%-$maxTo%, width=${thicknessPx}px")
             } catch (t: Throwable) {
-                Log.e(TAG, "Failed to attach overlay for edge: $edge", t)
+                Log.e(TAG, "Failed to attach touch detector for edge: $edge", t)
             }
         }
     }
@@ -119,5 +140,14 @@ class EdgeOverlayManager(
             }
         }
         activeViews.clear()
+
+        feedbackWaveView?.let { wave ->
+            try {
+                windowManager.removeView(wave)
+            } catch (t: Throwable) {
+                // Silently ignored
+            }
+        }
+        feedbackWaveView = null
     }
 }

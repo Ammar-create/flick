@@ -1,30 +1,24 @@
 package me.ammar.flick.service
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import android.view.WindowManager
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 
 /**
- * Interactive edge gesture overlay with UbikiTouch wave physics.
+ * Fixed edge touch detector view.
  *
- * 1. Idle state: 100% invisible/transparent so no bars appear on applications.
- * 2. Touch Down: Dynamically expands the window to full screen to capture all motion events without losing touch.
- * 3. Drag Inward: Draws an elastic cubic Bézier curve wave protruding from the edge following the finger.
- * 4. Accidental Touch Prevention: Touching or stationary holding does nothing. A deliberate inward pull is required.
- * 5. Large Swipe Radius: Substantial pull inward (> 100dp) prevents interference with native system back gesture.
- * 6. Priming & Release: Holding inward for ~1.5s primes with haptic feedback; release triggers the action.
+ * This view stays fixed at the edge and NEVER resizes mid-gesture.
+ * This guarantees that Android's InputDispatcher never cancels touch streams,
+ * allowing smooth, uninterrupted inward dragging across the full screen.
+ *
+ * Visual waves are drawn on FeedbackWaveOverlayView, which covers the screen
+ * with FLAG_NOT_TOUCHABLE.
  */
 class UbikiWaveOverlayView(
     context: Context,
@@ -35,18 +29,14 @@ class UbikiWaveOverlayView(
     val scriptName: String,
     val pullDistanceDp: Int = 40,
     val holdDurationMs: Long = 700L,
-    private val windowManager: WindowManager,
-    private val idleLayoutParams: WindowManager.LayoutParams,
+    private val feedbackWave: FeedbackWaveOverlayView,
     private val onGestureAction: (edge: String, gesture: String) -> Unit
 ) : View(context) {
 
     private val density: Float = resources.displayMetrics.density
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // Physics constants
-    private val waveHeightHalf = 120f * density
     private val minPullToPrime = pullDistanceDp.toFloat() * density
-    private val maxPullRadius = (pullDistanceDp * 2.8f).coerceAtLeast(100f) * density
     private val longHoldMs = holdDurationMs
 
     // State
@@ -59,159 +49,14 @@ class UbikiWaveOverlayView(
     private var currentY = 0f
     private var startTime = 0L
 
-    // Paints
-    private val waveFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#EE1F1820") // MetroList plum surface
-        style = Paint.Style.FILL
-    }
-    private val waveStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#D8B4D8") // Lilac border
-        style = Paint.Style.STROKE
-        strokeWidth = 2.5f * density
-    }
-    private val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-        strokeWidth = 3f * density
-    }
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#F5EEF5")
-        textSize = 12f * density
-        textAlign = Paint.Align.CENTER
-        isFakeBoldText = true
-    }
-
-    private val wavePath = Path()
-    private val arrowPath = Path()
-
     private val holdRunnable = Runnable {
         if (isDragging && !isPrimed) {
             val pull = calculatePullDistance()
-            if (pull >= minPullToPrime) {
+            if (pull >= minPullToPrime * 0.7f) {
                 isPrimed = true
                 performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                invalidate()
+                feedbackWave.updateWave(edge, pull, currentX, currentY, isPrimed, scriptName)
             }
-        }
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-
-        val w = width.toFloat()
-        val h = height.toFloat()
-        if (w <= 0f || h <= 0f) return
-
-        // In idle state, bars are 100% invisible/transparent
-        if (!isDragging) {
-            return
-        }
-
-        // Draw interactive wave when dragged
-        drawWave(canvas, w, h)
-    }
-
-    private fun drawWave(canvas: Canvas, w: Float, h: Float) {
-        val pull = calculatePullDistance()
-        if (pull <= 10f * density) return
-
-        val clampedPull = min(pull, maxPullRadius)
-        val cy = currentY.coerceIn(waveHeightHalf, h - waveHeightHalf)
-
-        wavePath.reset()
-
-        if (edge.lowercase() == "right") {
-            val edgeX = w
-            val peakX = max(edgeX - clampedPull, 20f * density)
-
-            val topY = cy - waveHeightHalf
-            val bottomY = cy + waveHeightHalf
-
-            wavePath.moveTo(edgeX, topY)
-            wavePath.cubicTo(
-                edgeX - clampedPull * 0.35f, topY + waveHeightHalf * 0.35f,
-                peakX + 28f * density, cy - 20f * density,
-                peakX, cy
-            )
-            wavePath.cubicTo(
-                peakX + 28f * density, cy + 20f * density,
-                edgeX - clampedPull * 0.35f, bottomY - waveHeightHalf * 0.35f,
-                edgeX, bottomY
-            )
-            wavePath.lineTo(edgeX, bottomY)
-            wavePath.close()
-
-            canvas.drawPath(wavePath, waveFillPaint)
-            canvas.drawPath(wavePath, waveStrokePaint)
-
-            drawBadge(canvas, peakX + 32f * density, cy)
-        } else if (edge.lowercase() == "left") {
-            val edgeX = 0f
-            val peakX = min(clampedPull, w - 20f * density)
-
-            val topY = cy - waveHeightHalf
-            val bottomY = cy + waveHeightHalf
-
-            wavePath.moveTo(edgeX, topY)
-            wavePath.cubicTo(
-                clampedPull * 0.35f, topY + waveHeightHalf * 0.35f,
-                peakX - 28f * density, cy - 20f * density,
-                peakX, cy
-            )
-            wavePath.cubicTo(
-                peakX - 28f * density, cy + 20f * density,
-                clampedPull * 0.35f, bottomY - waveHeightHalf * 0.35f,
-                edgeX, bottomY
-            )
-            wavePath.lineTo(edgeX, bottomY)
-            wavePath.close()
-
-            canvas.drawPath(wavePath, waveFillPaint)
-            canvas.drawPath(wavePath, waveStrokePaint)
-
-            drawBadge(canvas, peakX - 32f * density, cy)
-        }
-    }
-
-    private fun drawBadge(canvas: Canvas, badgeCenterX: Float, badgeCenterY: Float) {
-        val badgeRadius = 24f * density
-
-        if (isPrimed) {
-            badgePaint.color = Color.parseColor("#D8B4D8") // Highlighted Lilac
-            arrowPaint.color = Color.parseColor("#3A2338")
-        } else {
-            badgePaint.color = Color.parseColor("#382C36") // Dark Plum Surface
-            arrowPaint.color = Color.parseColor("#F5EEF5")
-        }
-
-        canvas.drawCircle(badgeCenterX, badgeCenterY, badgeRadius, badgePaint)
-
-        // Draw arrow icon inside badge
-        val arrowSize = 9f * density
-        arrowPath.reset()
-        if (edge.lowercase() == "right") {
-            arrowPath.moveTo(badgeCenterX + arrowSize * 0.5f, badgeCenterY - arrowSize)
-            arrowPath.lineTo(badgeCenterX - arrowSize * 0.5f, badgeCenterY)
-            arrowPath.lineTo(badgeCenterX + arrowSize * 0.5f, badgeCenterY + arrowSize)
-        } else {
-            arrowPath.moveTo(badgeCenterX - arrowSize * 0.5f, badgeCenterY - arrowSize)
-            arrowPath.lineTo(badgeCenterX + arrowSize * 0.5f, badgeCenterY)
-            arrowPath.lineTo(badgeCenterX - arrowSize * 0.5f, badgeCenterY + arrowSize)
-        }
-        canvas.drawPath(arrowPath, arrowPaint)
-
-        // Label text above badge
-        val label = when {
-            scriptName.contains("abdm", ignoreCase = true) -> "Add Download"
-            scriptName.contains("snip", ignoreCase = true) -> "Snip"
-            else -> scriptName
-        }
-        if (label.isNotBlank()) {
-            canvas.drawText(label, badgeCenterX, badgeCenterY - badgeRadius - 8f * density, textPaint)
         }
     }
 
@@ -236,10 +81,6 @@ class UbikiWaveOverlayView(
                 isPrimed = false
                 actionDispatched = false
 
-                // Expand window to fullscreen so touches aren't dropped when finger pulls inward
-                expandToFullscreen()
-
-                // Schedule hold timer for long swipe
                 mainHandler.postDelayed(holdRunnable, longHoldMs)
                 return true
             }
@@ -251,36 +92,42 @@ class UbikiWaveOverlayView(
                 currentY = event.rawY
                 val pull = calculatePullDistance()
 
-                // Check pull distance
+                // Check pull distance and hold threshold to prime
                 if (pull >= minPullToPrime && !isPrimed && !actionDispatched) {
                     val duration = SystemClock.uptimeMillis() - startTime
-                    if (duration >= (longHoldMs * 0.7f).toLong()) {
+                    if (duration >= (longHoldMs * 0.6f).toLong()) {
                         isPrimed = true
                         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                     }
                 }
 
-                invalidate()
+                if (pull > 5f * density) {
+                    feedbackWave.updateWave(edge, pull, currentX, currentY, isPrimed, scriptName)
+                }
+
                 return true
             }
 
             MotionEvent.ACTION_UP -> {
                 if (!isDragging) return false
 
+                isDragging = false
                 mainHandler.removeCallbacks(holdRunnable)
+                feedbackWave.clearWave()
+
                 val duration = SystemClock.uptimeMillis() - startTime
                 val pull = calculatePullDistance()
                 val dy = currentY - startY
 
-                // Non-swipe touches (tap on screen buttons or minor edge touch):
-                // Reset immediately and forward/dispatch the tap to the underlying app so screen is clickable!
-                if (pull < minPullToPrime * 0.5f && abs(dy) < 30f * density) {
-                    resetToIdle()
-                    if (duration < 350L) {
-                        mainHandler.postDelayed({
-                            FlickAccessibilityService.instance?.dispatchTap(startX, startY)
-                        }, 40L)
-                    }
+                // Non-swipe touches (tap on screen buttons without pulling inward):
+                // Forward/dispatch the tap to the underlying app so screen remains 100% clickable!
+                if (pull < 16f * density && abs(dy) < 20f * density && duration < 320L) {
+                    FlickAccessibilityService.instance?.dispatchTap(startX, startY)
+                    return true
+                }
+
+                // If user didn't pull far enough inward, cancel without firing
+                if (pull < minPullToPrime * 0.45f) {
                     return true
                 }
 
@@ -302,44 +149,16 @@ class UbikiWaveOverlayView(
                     onGestureAction(edge, recognizedGesture)
                 }
 
-                resetToIdle()
                 return true
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                isDragging = false
                 mainHandler.removeCallbacks(holdRunnable)
-                resetToIdle()
+                feedbackWave.clearWave()
                 return true
             }
         }
         return super.onTouchEvent(event)
-    }
-
-    private fun expandToFullscreen() {
-        try {
-            val fullscreenParams = WindowManager.LayoutParams().apply {
-                copyFrom(idleLayoutParams)
-                width = WindowManager.LayoutParams.MATCH_PARENT
-                height = WindowManager.LayoutParams.MATCH_PARENT
-                x = 0
-                y = 0
-            }
-            windowManager.updateViewLayout(this, fullscreenParams)
-        } catch (t: Throwable) {
-            // Silently handled
-        }
-    }
-
-    private fun resetToIdle() {
-        isDragging = false
-        isPrimed = false
-        actionDispatched = false
-        mainHandler.removeCallbacks(holdRunnable)
-        try {
-            windowManager.updateViewLayout(this, idleLayoutParams)
-        } catch (t: Throwable) {
-            // Silently handled
-        }
-        invalidate()
     }
 }

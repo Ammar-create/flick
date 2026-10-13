@@ -19,7 +19,7 @@ object NotificationHelper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "flick Edge Service",
+                "Flick Edge Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Keeps edge gesture detection active in the background"
@@ -42,7 +42,7 @@ object NotificationHelper {
         )
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("flick")
+            .setContentTitle("Flick")
             .setContentText("Edge gesture host active ($activeTriggersCount triggers configured)")
             .setSmallIcon(android.R.drawable.ic_dialog_dialer)
             .setContentIntent(pendingIntent)
