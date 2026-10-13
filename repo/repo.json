@@ -1,0 +1,27 @@
+{
+  "name": "Ammar's Gesture Repo",
+  "description": "Local extension repo for flick. Source of truth: /workspace/projects/flick/repo",
+  "manifestVersion": 1,
+  "plugins": [
+    {
+      "id": "abdm-add-download",
+      "name": "AB DM: Add Download",
+      "version": "1.0.0",
+      "api": 1,
+      "author": "Ammar",
+      "description": "Grabs a URL (from args or the clipboard) and opens AB Download Manager's Add Download sheet, then taps Download.",
+      "file": "extensions/abdm-add-download.js",
+      "hash": "sha256:ad5d44e3c1208660efe4c95ea1a68a7b098f81838fbc21543c56671bd0ceadbd"
+    },
+    {
+      "id": "snip-to-clipboard",
+      "name": "Snip to Clipboard",
+      "version": "0.0.1",
+      "api": 1,
+      "author": "Ammar",
+      "description": "STUB. Region capture straight to the clipboard, no gallery file. Needs a host-side capture call (v2).",
+      "file": "extensions/snip-to-clipboard.js",
+      "hash": "sha256:e5acf778ea399e048fe3fda1662da5a68e99b1ef08a7533f3792cd1c34fce41d"
+    }
+  ]
+}

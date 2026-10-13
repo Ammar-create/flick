@@ -1,0 +1,24 @@
+[
+  {
+    "id": "right-up",
+    "edge": "right",
+    "gesture": "swipe-up",
+    "fromPct": 20,
+    "toPct": 60,
+    "thicknessPx": 24,
+    "script": "abdm-add-download",
+    "args": {},
+    "comment": "Swipe up along the right edge: open AB DM's Add Download sheet for whatever URL is on the clipboard."
+  },
+  {
+    "id": "left-double",
+    "edge": "left",
+    "gesture": "double-tap",
+    "fromPct": 40,
+    "toPct": 60,
+    "thicknessPx": 24,
+    "script": "snip-to-clipboard",
+    "args": {},
+    "comment": "STUB. Double-tap left edge: snipping overlay, result lands on the clipboard with no file in the gallery."
+  }
+]
