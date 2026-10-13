@@ -100,6 +100,8 @@ class ActionDispatcher(
                     id = "direct-$actionName",
                     edge = "overlay",
                     gesture = "tap",
+                    fromPct = 0,
+                    toPct = 100,
                     script = actionName
                 )
                 outcome = executeV1Fallback(dummyTrigger)
