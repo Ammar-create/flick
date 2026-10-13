@@ -19,9 +19,11 @@ import me.ammar.flick.engine.SyncState
 import me.ammar.flick.model.PluginEntry
 import me.ammar.flick.model.TriggerModel
 import me.ammar.flick.service.FlickAccessibilityService
+import me.ammar.flick.service.screenshot.ScreenshotManager
 
 data class MainUiState(
     val isAccessibilityActive: Boolean = false,
+    val isServiceMasterEnabled: Boolean = true,
     val isShizukuAvailable: Boolean = false,
     val hasShizukuPermission: Boolean = false,
     val isBatteryOptimizedIgnored: Boolean = false,
@@ -36,12 +38,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as FlickApp
     private val repoSyncManager = app.repoSyncManager
     private val actionDispatcher = app.actionDispatcher
+    private val servicePreferences = app.servicePreferences
 
     private val _isBatteryIgnored = MutableStateFlow(checkBatteryExemption())
     val isBatteryIgnored = _isBatteryIgnored.asStateFlow()
 
     private data class ServiceStatus(
         val isAccessibilityActive: Boolean,
+        val isMasterEnabled: Boolean,
         val isShizukuAvailable: Boolean,
         val hasShizukuPermission: Boolean,
         val isBatteryOptimizedIgnored: Boolean
@@ -49,11 +53,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val serviceStatusFlow = combine(
         FlickAccessibilityService.isRunning,
+        servicePreferences.isServiceEnabled,
         ShizukuBridge.isAvailable,
-        ShizukuBridge.hasPermission,
-        _isBatteryIgnored
-    ) { accRunning, shizukuAvail, shizukuPerm, batteryIgnored ->
-        ServiceStatus(accRunning, shizukuAvail, shizukuPerm, batteryIgnored)
+        ShizukuBridge.hasPermission
+    ) { accRunning, masterEnabled, shizukuAvail, shizukuPerm ->
+        ServiceStatus(accRunning, masterEnabled, shizukuAvail, shizukuPerm, checkBatteryExemption())
     }
 
     private val repoFlow = combine(
@@ -65,13 +69,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val uiState: StateFlow<MainUiState> = combine(
         serviceStatusFlow,
-        actionDispatcher.triggers,
+        servicePreferences.triggers,
         repoFlow,
         actionDispatcher.recentLogs
     ) { status, triggers, repoData, logs ->
         val (plugins, sync) = repoData
         MainUiState(
             isAccessibilityActive = status.isAccessibilityActive,
+            isServiceMasterEnabled = status.isMasterEnabled,
             isShizukuAvailable = status.isShizukuAvailable,
             hasShizukuPermission = status.hasShizukuPermission,
             isBatteryOptimizedIgnored = status.isBatteryOptimizedIgnored,
@@ -89,7 +94,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshStatus() {
         ShizukuBridge.checkStatus()
         _isBatteryIgnored.value = checkBatteryExemption()
-        actionDispatcher.loadTriggers()
+    }
+
+    fun toggleServiceMasterEnabled(enabled: Boolean) {
+        servicePreferences.setServiceEnabled(enabled)
+    }
+
+    fun addOrUpdateTrigger(trigger: TriggerModel) {
+        servicePreferences.addOrUpdateTrigger(trigger)
+    }
+
+    fun deleteTrigger(triggerId: String) {
+        servicePreferences.deleteTrigger(triggerId)
     }
 
     fun requestShizukuPermission() {
@@ -104,6 +120,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun testTrigger(trigger: TriggerModel) {
         actionDispatcher.dispatchGesture(trigger.edge, trigger.gesture)
+    }
+
+    fun testScreenshotWorkflow() {
+        val service = FlickAccessibilityService.instance
+        if (service != null) {
+            ScreenshotManager.triggerSnipWorkflow(service)
+        }
     }
 
     private fun checkBatteryExemption(): Boolean {

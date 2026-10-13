@@ -21,8 +21,13 @@ class EdgeOverlayManager(
     private val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val activeViews = mutableListOf<View>()
 
-    fun updateOverlays(triggers: List<TriggerModel>) {
+    fun updateOverlays(triggers: List<TriggerModel>, isServiceEnabled: Boolean) {
         removeOverlays()
+
+        if (!isServiceEnabled) {
+            Log.i(TAG, "Master toggle disabled: no overlays attached")
+            return
+        }
 
         val displayMetrics = DisplayMetrics()
         @Suppress("DEPRECATION")
@@ -35,9 +40,10 @@ class EdgeOverlayManager(
 
         for ((edge, edgeTriggers) in grouped) {
             val minFrom = edgeTriggers.minOfOrNull { it.fromPct } ?: 20
-            val maxTo = edgeTriggers.maxOfOrNull { it.toPct } ?: 60
-            val thickness = edgeTriggers.maxOfOrNull { it.thicknessPx } ?: 24
-            val thicknessPx = (thickness * displayMetrics.density).toInt().coerceAtLeast(32)
+            val maxTo = edgeTriggers.maxOfOrNull { it.toPct } ?: 65
+            // Generous thickness (default 48dp) so touches are intercepted before native back gesture
+            val thickness = edgeTriggers.maxOfOrNull { it.thicknessPx } ?: 48
+            val thicknessPx = (thickness * displayMetrics.density).toInt().coerceAtLeast(44)
 
             val primaryScript = edgeTriggers.firstOrNull()?.script ?: ""
 
@@ -87,7 +93,7 @@ class EdgeOverlayManager(
             try {
                 windowManager.addView(waveOverlay, idleParams)
                 activeViews.add(waveOverlay)
-                Log.i(TAG, "Attached UbikiTouch wave overlay for edge: $edge ($minFrom% - $maxTo%)")
+                Log.i(TAG, "Attached UbikiTouch wave overlay for edge: $edge ($minFrom% - $maxTo%, ${thicknessPx}px radius)")
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to attach overlay for edge: $edge", t)
             }

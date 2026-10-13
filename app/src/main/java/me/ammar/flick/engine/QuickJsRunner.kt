@@ -34,6 +34,10 @@ class QuickJsRunner(private val bridge: HostBridgeInterface) {
                     get: (url) => __bridge.httpGet(url),
                     post: (url, body) => __bridge.httpPost(url, typeof body === 'string' ? body : JSON.stringify(body))
                 };
+                const capture = {
+                    region: () => __bridge.captureSnip(),
+                    snip: () => __bridge.captureSnip()
+                };
                 const log = (msg) => __bridge.toast(String(msg));
             """.trimIndent()
 

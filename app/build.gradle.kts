@@ -41,13 +41,24 @@ android {
         }
     }
 
+    signingConfigs {
+        create("persistentDebug") {
+            storeFile = file("${rootDir}/keystore/debug.keystore")
+            storePassword = "androiddebugkey"
+            keyAlias = "androiddebugkey"
+            keyPassword = "androiddebugkey"
+        }
+    }
+
     buildTypes {
         debug {
             isDebuggable = true
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("persistentDebug")
         }
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("persistentDebug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

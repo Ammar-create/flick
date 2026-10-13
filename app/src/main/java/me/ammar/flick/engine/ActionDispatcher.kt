@@ -5,15 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
+import me.ammar.flick.data.ServicePreferences
 import me.ammar.flick.model.TriggerModel
-import java.io.File
+import me.ammar.flick.service.screenshot.ScreenshotManager
 
 data class GestureEventLog(
     val triggerId: String,
@@ -26,6 +26,7 @@ data class GestureEventLog(
 
 class ActionDispatcher(
     private val context: Context,
+    private val servicePreferences: ServicePreferences,
     private val repoSyncManager: RepoSyncManager,
     private val accessibilityServiceSupplier: () -> AccessibilityService?
 ) {
@@ -40,37 +41,17 @@ class ActionDispatcher(
     private val _recentLogs = MutableStateFlow<List<GestureEventLog>>(emptyList())
     val recentLogs = _recentLogs.asStateFlow()
 
-    private val _triggers = MutableStateFlow<List<TriggerModel>>(emptyList())
-    val triggers = _triggers.asStateFlow()
-
-    init {
-        loadTriggers()
-    }
-
-    fun loadTriggers() {
-        try {
-            // First check app-private storage, fallback to assets
-            val configFile = File(context.filesDir, "triggers.json")
-            val jsonString = if (configFile.exists()) {
-                configFile.readText()
-            } else {
-                context.assets.open("triggers.json").bufferedReader().use { it.readText() }
-            }
-            val parsed = Json.decodeFromString<List<TriggerModel>>(jsonString)
-            _triggers.value = parsed
-        } catch (t: Throwable) {
-            Log.w(TAG, "Failed to load triggers.json", t)
-        }
-    }
+    val triggers: StateFlow<List<TriggerModel>> = servicePreferences.triggers
 
     fun dispatchGesture(edge: String, gesture: String) {
         scope.launch {
-            val matchedTrigger = _triggers.value.find {
+            val currentTriggers = triggers.value
+            val matchedTrigger = currentTriggers.find {
                 it.edge.equals(edge, ignoreCase = true) && it.gesture.equals(gesture, ignoreCase = true)
-            } ?: _triggers.value.find {
+            } ?: currentTriggers.find {
                 it.edge.equals(edge, ignoreCase = true) &&
                 (gesture.startsWith("swipe") && it.gesture.startsWith("swipe"))
-            } ?: _triggers.value.find {
+            } ?: currentTriggers.find {
                 it.edge.equals(edge, ignoreCase = true)
             }
 
@@ -85,12 +66,10 @@ class ActionDispatcher(
             val outcome: String
 
             if (extensionFile != null && extensionFile.exists()) {
-                // Execute downloaded extension via QuickJS runtime
                 val scriptCode = extensionFile.readText()
                 quickJsRunner.executeScript(scriptCode, matchedTrigger.args)
                 outcome = "Executed ${matchedTrigger.script}.js via QuickJS"
             } else {
-                // V1 Skeleton Fallback: Execute hardcoded loop
                 outcome = executeV1Fallback(matchedTrigger)
             }
 
@@ -108,6 +87,16 @@ class ActionDispatcher(
 
     private fun executeV1Fallback(trigger: TriggerModel): String {
         return when (trigger.script) {
+            "snip-to-clipboard" -> {
+                val service = accessibilityServiceSupplier()
+                if (service != null) {
+                    ScreenshotManager.triggerSnipWorkflow(service)
+                    "Screenshot captured: 5s crop bar displayed"
+                } else {
+                    bridge.toast("Accessibility service not connected")
+                    "Error: Service not connected"
+                }
+            }
             "abdm-add-download" -> {
                 val clipText = bridge.getClipboard()
                 if (clipText.isBlank() || !clipText.startsWith("http", ignoreCase = true)) {
@@ -130,10 +119,6 @@ class ActionDispatcher(
                         "Launch failed: ${t.message}"
                     }
                 }
-            }
-            "snip-to-clipboard" -> {
-                bridge.toast("Snip to Clipboard requires capture.region() bridge call (V4)")
-                "Stub: capture.region() pending V4"
             }
             else -> {
                 bridge.toast("Fired trigger ${trigger.id} -> ${trigger.script}")

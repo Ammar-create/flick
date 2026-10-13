@@ -1,6 +1,7 @@
 package me.ammar.flick
 
 import android.app.Application
+import me.ammar.flick.data.ServicePreferences
 import me.ammar.flick.engine.ActionDispatcher
 import me.ammar.flick.engine.RepoSyncManager
 import me.ammar.flick.engine.ShizukuBridge
@@ -13,6 +14,9 @@ class FlickApp : Application() {
             private set
     }
 
+    lateinit var servicePreferences: ServicePreferences
+        private set
+
     lateinit var repoSyncManager: RepoSyncManager
         private set
 
@@ -23,9 +27,10 @@ class FlickApp : Application() {
         super.onCreate()
         instance = this
 
+        servicePreferences = ServicePreferences(this)
         ShizukuBridge.init()
         repoSyncManager = RepoSyncManager(this)
-        actionDispatcher = ActionDispatcher(this, repoSyncManager) {
+        actionDispatcher = ActionDispatcher(this, servicePreferences, repoSyncManager) {
             FlickAccessibilityService.instance
         }
     }

@@ -33,6 +33,7 @@ interface HostBridgeInterface {
     fun tapNode(nodeJson: String): Boolean
     fun httpGet(url: String): String
     fun httpPost(url: String, body: String): String
+    fun captureSnip(): Boolean
 }
 
 class ScriptBridge(
@@ -175,6 +176,14 @@ class ScriptBridge(
         } catch (e: Exception) {
             "Error: ${e.message}"
         }
+    }
+
+    override fun captureSnip(): Boolean {
+        val service = accessibilityServiceSupplier() ?: return false
+        mainHandler.post {
+            me.ammar.flick.service.screenshot.ScreenshotManager.triggerSnipWorkflow(service)
+        }
+        return true
     }
 
     private fun searchNode(

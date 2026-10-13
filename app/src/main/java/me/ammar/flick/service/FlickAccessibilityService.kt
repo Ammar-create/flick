@@ -10,8 +10,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import me.ammar.flick.FlickApp
+import me.ammar.flick.service.screenshot.ScreenshotManager
 
 class FlickAccessibilityService : AccessibilityService() {
 
@@ -42,11 +44,17 @@ class FlickAccessibilityService : AccessibilityService() {
             FlickApp.instance.actionDispatcher.dispatchGesture(edge, gesture)
         }
 
-        // Observe triggers changes and update overlays
+        // Observe triggers and master service toggle
         serviceScope.launch {
-            FlickApp.instance.actionDispatcher.triggers.collectLatest { triggers ->
-                overlayManager?.updateOverlays(triggers)
-                val notification = NotificationHelper.buildNotification(this@FlickAccessibilityService, triggers.size)
+            combine(
+                FlickApp.instance.servicePreferences.triggers,
+                FlickApp.instance.servicePreferences.isServiceEnabled
+            ) { triggers, isEnabled ->
+                triggers to isEnabled
+            }.collectLatest { (triggers, isEnabled) ->
+                overlayManager?.updateOverlays(triggers, isEnabled)
+                val activeCount = if (isEnabled) triggers.size else 0
+                val notification = NotificationHelper.buildNotification(this@FlickAccessibilityService, activeCount)
                 val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
                 nm.notify(NotificationHelper.NOTIFICATION_ID, notification)
             }
@@ -65,6 +73,7 @@ class FlickAccessibilityService : AccessibilityService() {
         Log.i(TAG, "FlickAccessibilityService unbound")
         instance = null
         _isRunning.value = false
+        ScreenshotManager.dismissAllOverlays(this)
         overlayManager?.removeOverlays()
         serviceScope.cancel()
         return super.onUnbind(intent)
@@ -74,6 +83,7 @@ class FlickAccessibilityService : AccessibilityService() {
         Log.i(TAG, "FlickAccessibilityService destroyed")
         instance = null
         _isRunning.value = false
+        ScreenshotManager.dismissAllOverlays(this)
         overlayManager?.removeOverlays()
         serviceScope.cancel()
         super.onDestroy()

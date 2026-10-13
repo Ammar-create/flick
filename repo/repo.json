@@ -21,7 +21,7 @@
       "author": "Ammar",
       "description": "STUB. Region capture straight to the clipboard, no gallery file. Needs a host-side capture call (v2).",
       "file": "extensions/snip-to-clipboard.js",
-      "hash": "sha256:e5acf778ea399e048fe3fda1662da5a68e99b1ef08a7533f3792cd1c34fce41d"
+      "hash": "sha256:cd8f983ae9f117b2c4b3308fc5b0c727abacd69787ae8eff115efd28e6138fb6"
     }
   ]
 }
