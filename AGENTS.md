@@ -48,4 +48,4 @@ Read this before touching anything in this repo. Rules here are not preferences.
 
 Append every gotcha here as it happens, with the date. This file is the project's immune system.
 
-- 2026-10-13 — project created. No failures yet.
+- 2026-10-13 — android-actions/setup-android@v3 fails on ubuntu-latest because it invokes deprecated sdkmanager tools package. GitHub runners already have Android SDK preinstalled at $ANDROID_HOME; setup-android step must be omitted.
