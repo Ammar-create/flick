@@ -40,21 +40,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isBatteryIgnored = MutableStateFlow(checkBatteryExemption())
     val isBatteryIgnored = _isBatteryIgnored.asStateFlow()
 
-    val uiState: StateFlow<MainUiState> = combine(
+    private data class ServiceStatus(
+        val isAccessibilityActive: Boolean,
+        val isShizukuAvailable: Boolean,
+        val hasShizukuPermission: Boolean,
+        val isBatteryOptimizedIgnored: Boolean
+    )
+
+    private val serviceStatusFlow = combine(
         FlickAccessibilityService.isRunning,
         ShizukuBridge.isAvailable,
         ShizukuBridge.hasPermission,
-        _isBatteryIgnored,
-        actionDispatcher.triggers,
+        _isBatteryIgnored
+    ) { accRunning, shizukuAvail, shizukuPerm, batteryIgnored ->
+        ServiceStatus(accRunning, shizukuAvail, shizukuPerm, batteryIgnored)
+    }
+
+    private val repoFlow = combine(
         repoSyncManager.installedPlugins,
-        repoSyncManager.syncState,
+        repoSyncManager.syncState
+    ) { plugins, sync ->
+        Pair(plugins, sync)
+    }
+
+    val uiState: StateFlow<MainUiState> = combine(
+        serviceStatusFlow,
+        actionDispatcher.triggers,
+        repoFlow,
         actionDispatcher.recentLogs
-    ) { accRunning, shizukuAvail, shizukuPerm, batteryIgnored, triggers, plugins, sync, logs ->
+    ) { status, triggers, repoData, logs ->
+        val (plugins, sync) = repoData
         MainUiState(
-            isAccessibilityActive = accRunning,
-            isShizukuAvailable = shizukuAvail,
-            hasShizukuPermission = shizukuPerm,
-            isBatteryOptimizedIgnored = batteryIgnored,
+            isAccessibilityActive = status.isAccessibilityActive,
+            isShizukuAvailable = status.isShizukuAvailable,
+            hasShizukuPermission = status.hasShizukuPermission,
+            isBatteryOptimizedIgnored = status.isBatteryOptimizedIgnored,
             triggers = triggers,
             installedPlugins = plugins,
             syncState = sync,

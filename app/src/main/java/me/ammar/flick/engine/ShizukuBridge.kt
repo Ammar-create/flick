@@ -50,11 +50,7 @@ object ShizukuBridge {
             val ping = Shizuku.pingBinder()
             _isAvailable.value = ping
             if (ping) {
-                _hasPermission.value = if (Shizuku.isPre_V11()) {
-                    false
-                } else {
-                    Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-                }
+                _hasPermission.value = (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED)
             } else {
                 _hasPermission.value = false
             }
