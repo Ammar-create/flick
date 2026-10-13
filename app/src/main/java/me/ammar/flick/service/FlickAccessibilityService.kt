@@ -79,6 +79,18 @@ class FlickAccessibilityService : AccessibilityService() {
         // Accessibility event processing if needed
     }
 
+    fun dispatchTap(x: Float, y: Float) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            val path = android.graphics.Path().apply {
+                moveTo(x, y)
+            }
+            val stroke = android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 40)
+            val gesture = android.accessibilityservice.GestureDescription.Builder().addStroke(stroke).build()
+            dispatchGesture(gesture, null, null)
+            Log.d(TAG, "Forwarded tap through to underlying screen at ($x, $y)")
+        }
+    }
+
     override fun onInterrupt() {
         Log.w(TAG, "Accessibility service interrupted")
     }

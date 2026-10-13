@@ -272,10 +272,15 @@ class UbikiWaveOverlayView(
                 val pull = calculatePullDistance()
                 val dy = currentY - startY
 
-                // Accidental touch / tapping prevention: must pull inward at least 60% of minPullToPrime
-                if (pull < minPullToPrime * 0.6f && abs(dy) < 80f * density) {
-                    // Ignored accidental touch or stationary tap
+                // Non-swipe touches (tap on screen buttons or minor edge touch):
+                // Reset immediately and forward/dispatch the tap to the underlying app so screen is clickable!
+                if (pull < minPullToPrime * 0.5f && abs(dy) < 30f * density) {
                     resetToIdle()
+                    if (duration < 350L) {
+                        mainHandler.postDelayed({
+                            FlickAccessibilityService.instance?.dispatchTap(startX, startY)
+                        }, 40L)
+                    }
                     return true
                 }
 

@@ -26,7 +26,7 @@ interface HostBridgeInterface {
     fun shell(cmd: String): String
     fun launch(component: String)
     fun processText(text: String, targetPkg: String?, targetCls: String?)
-    fun sleep(ms: Long)
+    fun sleep(ms: Int)
     fun getClipboard(): String
     fun setClipboard(text: String)
     fun toast(msg: String)
@@ -82,9 +82,9 @@ class ScriptBridge(
         }
     }
 
-    override fun sleep(ms: Long) {
+    override fun sleep(ms: Int) {
         try {
-            Thread.sleep(ms.coerceAtLeast(0L))
+            Thread.sleep(ms.coerceAtLeast(0).toLong())
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
         }

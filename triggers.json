@@ -5,7 +5,7 @@
     "gesture": "swipe-hold",
     "fromPct": 20,
     "toPct": 65,
-    "thicknessPx": 28,
+    "thicknessPx": 16,
     "script": "abdm-add-download",
     "args": {},
     "comment": "Swipe inward from right edge and hold: open AB DM Add Download sheet for clipboard URL."
@@ -16,7 +16,7 @@
     "gesture": "swipe-hold",
     "fromPct": 30,
     "toPct": 70,
-    "thicknessPx": 28,
+    "thicknessPx": 16,
     "script": "snip-to-clipboard",
     "args": {},
     "comment": "Swipe inward from left edge and hold: STUB region snip to clipboard."

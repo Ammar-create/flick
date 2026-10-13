@@ -204,7 +204,7 @@ fun MainScreen(viewModel: MainViewModel) {
             gesture = "swipe-hold",
             fromPct = 25,
             toPct = 65,
-            thicknessPx = 48,
+            thicknessPx = 16,
             script = if (state.installedPlugins.isNotEmpty()) state.installedPlugins.first().id else "abdm-add-download"
         )
 
@@ -1043,11 +1043,11 @@ private fun TriggerEditDialog(
                     colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
                 )
 
-                Text("Touch Radius / Thickness: ${thickness.toInt()}dp", style = MaterialTheme.typography.labelSmall)
+                Text("Touch Zone Thickness: ${thickness.toInt()}dp (Recommended: 14-18dp)", style = MaterialTheme.typography.labelSmall)
                 Slider(
                     value = thickness,
                     onValueChange = { thickness = it },
-                    valueRange = 24f..64f,
+                    valueRange = 8f..32f,
                     colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
                 )
             }

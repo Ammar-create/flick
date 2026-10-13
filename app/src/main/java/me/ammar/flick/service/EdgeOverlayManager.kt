@@ -46,9 +46,12 @@ class EdgeOverlayManager(
         for ((edge, edgeTriggers) in grouped) {
             val minFrom = edgeTriggers.minOfOrNull { it.fromPct } ?: 20
             val maxTo = edgeTriggers.maxOfOrNull { it.toPct } ?: 65
-            // Generous thickness (default 48dp) so touches are intercepted before native back gesture
-            val thickness = edgeTriggers.maxOfOrNull { it.thicknessPx } ?: 48
-            val thicknessPx = (thickness * displayMetrics.density).toInt().coerceAtLeast(44)
+            // Slim thickness (default 16dp) hugging outer bezel to keep screen apps 100% clickable
+            val thickness = edgeTriggers.maxOfOrNull { it.thicknessPx } ?: 16
+            val thicknessPx = (thickness * displayMetrics.density).toInt().coerceIn(
+                (8 * displayMetrics.density).toInt(),
+                (32 * displayMetrics.density).toInt()
+            )
 
             val primaryScript = edgeTriggers.firstOrNull()?.script ?: ""
 
