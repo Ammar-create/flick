@@ -80,6 +80,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.max
+import kotlin.math.min
 import me.ammar.flick.engine.SyncState
 import me.ammar.flick.model.PluginEntry
 import me.ammar.flick.model.TriggerModel
