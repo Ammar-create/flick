@@ -2,9 +2,7 @@ package me.ammar.flick.service
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
@@ -23,7 +21,7 @@ class EdgeOverlayManager(
     private val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val activeViews = mutableListOf<View>()
 
-    fun updateOverlays(triggers: List<TriggerModel>, showVisualZones: Boolean = false) {
+    fun updateOverlays(triggers: List<TriggerModel>) {
         removeOverlays()
 
         val displayMetrics = DisplayMetrics()
@@ -32,35 +30,24 @@ class EdgeOverlayManager(
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
 
-        // Group triggers by edge and create overlay strips
-        val grouped = triggers.groupBy { it.edge }
+        // Group triggers by edge
+        val grouped = triggers.groupBy { it.edge.lowercase() }
 
         for ((edge, edgeTriggers) in grouped) {
-            val minFrom = edgeTriggers.minOfOrNull { it.fromPct } ?: 0
-            val maxTo = edgeTriggers.maxOfOrNull { it.toPct } ?: 100
+            val minFrom = edgeTriggers.minOfOrNull { it.fromPct } ?: 20
+            val maxTo = edgeTriggers.maxOfOrNull { it.toPct } ?: 60
             val thickness = edgeTriggers.maxOfOrNull { it.thicknessPx } ?: 24
-            val thicknessPx = (thickness * displayMetrics.density).toInt().coerceAtLeast(16)
+            val thicknessPx = (thickness * displayMetrics.density).toInt().coerceAtLeast(32)
 
-            val stripView = View(service).apply {
-                if (showVisualZones) {
-                    background = GradientDrawable().apply {
-                        setColor(0x1AD8B4D8.toInt()) // Soft lilac tint
-                        setStroke((1 * displayMetrics.density).toInt(), 0x4DD8B4D8.toInt())
-                    }
-                } else {
-                    setBackgroundColor(Color.TRANSPARENT)
-                }
-                setOnTouchListener(EdgeGestureDetector(edge, onGestureAction))
-            }
+            val primaryScript = edgeTriggers.firstOrNull()?.script ?: ""
 
-            val params = WindowManager.LayoutParams().apply {
+            val idleParams = WindowManager.LayoutParams().apply {
                 type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
                 flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                        WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
                 format = PixelFormat.TRANSLUCENT
 
-                when (edge.lowercase()) {
+                when (edge) {
                     "left" -> {
                         gravity = Gravity.LEFT or Gravity.TOP
                         x = 0
@@ -75,27 +62,37 @@ class EdgeOverlayManager(
                         width = thicknessPx
                         height = (screenHeight * (maxTo - minFrom)) / 100
                     }
-                    "bottom" -> {
+                    else -> {
                         gravity = Gravity.BOTTOM or Gravity.LEFT
                         x = (screenWidth * minFrom) / 100
                         y = 0
-                        width = (screenWidth * (maxTo - minMin(minFrom, maxTo))) / 100
+                        width = (screenWidth * (maxTo - minFrom)) / 100
                         height = thicknessPx
                     }
                 }
             }
 
+            val waveOverlay = UbikiWaveOverlayView(
+                context = service,
+                edge = edge,
+                minFromPct = minFrom,
+                maxToPct = maxTo,
+                thicknessPx = thicknessPx,
+                scriptName = primaryScript,
+                windowManager = windowManager,
+                idleLayoutParams = idleParams,
+                onGestureAction = onGestureAction
+            )
+
             try {
-                windowManager.addView(stripView, params)
-                activeViews.add(stripView)
-                Log.i(TAG, "Attached overlay strip for edge: $edge ($minFrom% - $maxTo%)")
+                windowManager.addView(waveOverlay, idleParams)
+                activeViews.add(waveOverlay)
+                Log.i(TAG, "Attached UbikiTouch wave overlay for edge: $edge ($minFrom% - $maxTo%)")
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to attach overlay for edge: $edge", t)
             }
         }
     }
-
-    private fun minMin(a: Int, b: Int) = minOf(a, b)
 
     fun removeOverlays() {
         for (view in activeViews) {

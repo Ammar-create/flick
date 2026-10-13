@@ -67,6 +67,11 @@ class ActionDispatcher(
         scope.launch {
             val matchedTrigger = _triggers.value.find {
                 it.edge.equals(edge, ignoreCase = true) && it.gesture.equals(gesture, ignoreCase = true)
+            } ?: _triggers.value.find {
+                it.edge.equals(edge, ignoreCase = true) &&
+                (gesture.startsWith("swipe") && it.gesture.startsWith("swipe"))
+            } ?: _triggers.value.find {
+                it.edge.equals(edge, ignoreCase = true)
             }
 
             if (matchedTrigger == null) {

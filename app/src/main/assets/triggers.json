@@ -1,24 +1,24 @@
 [
   {
-    "id": "right-up",
+    "id": "right-swipe",
     "edge": "right",
-    "gesture": "swipe-up",
+    "gesture": "swipe-hold",
     "fromPct": 20,
-    "toPct": 60,
-    "thicknessPx": 24,
+    "toPct": 65,
+    "thicknessPx": 28,
     "script": "abdm-add-download",
     "args": {},
-    "comment": "Swipe up along the right edge: open AB DM's Add Download sheet for whatever URL is on the clipboard."
+    "comment": "Swipe inward from right edge and hold: open AB DM Add Download sheet for clipboard URL."
   },
   {
-    "id": "left-double",
+    "id": "left-swipe",
     "edge": "left",
-    "gesture": "double-tap",
-    "fromPct": 40,
-    "toPct": 60,
-    "thicknessPx": 24,
+    "gesture": "swipe-hold",
+    "fromPct": 30,
+    "toPct": 70,
+    "thicknessPx": 28,
     "script": "snip-to-clipboard",
     "args": {},
-    "comment": "STUB. Double-tap left edge: snipping overlay, result lands on the clipboard with no file in the gallery."
+    "comment": "Swipe inward from left edge and hold: STUB region snip to clipboard."
   }
 ]
