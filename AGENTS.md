@@ -49,3 +49,5 @@ Read this before touching anything in this repo. Rules here are not preferences.
 Append every gotcha here as it happens, with the date. This file is the project's immune system.
 
 - 2026-10-13 — android-actions/setup-android@v3 fails on ubuntu-latest because it invokes deprecated sdkmanager tools package. GitHub runners already have Android SDK preinstalled at $ANDROID_HOME; setup-android step must be omitted.
+- 2026-10-13 — Shizuku 13.1.5 drops isPre_V11(). Check pingBinder() followed directly by Shizuku.checkSelfPermission() == PERMISSION_GRANTED.
+- 2026-10-13 — Kotlin Coroutines combine() only has typed overloads up to 5 flows. Combining more than 5 flows invokes the untyped Array<T> overload; group sub-states into smaller combines instead.
