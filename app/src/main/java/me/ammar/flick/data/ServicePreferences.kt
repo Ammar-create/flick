@@ -16,10 +16,10 @@ class ServicePreferences(private val context: Context) {
     private val _isServiceEnabled = MutableStateFlow(prefs.getBoolean(KEY_SERVICE_ENABLED, true))
     val isServiceEnabled = _isServiceEnabled.asStateFlow()
 
-    private val _pullDistanceDp = MutableStateFlow(prefs.getInt(KEY_PULL_DISTANCE, 40))
+    private val _pullDistanceDp = MutableStateFlow(prefs.getInt(KEY_PULL_DISTANCE, 32))
     val pullDistanceDp = _pullDistanceDp.asStateFlow()
 
-    private val _holdDurationMs = MutableStateFlow(prefs.getLong(KEY_HOLD_DURATION, 700L))
+    private val _holdDurationMs = MutableStateFlow(prefs.getLong(KEY_HOLD_DURATION, 600L))
     val holdDurationMs = _holdDurationMs.asStateFlow()
 
     private val _triggers = MutableStateFlow<List<TriggerModel>>(loadTriggersInternal())
@@ -31,7 +31,7 @@ class ServicePreferences(private val context: Context) {
     }
 
     fun setPullDistanceDp(distance: Int) {
-        val clamped = distance.coerceIn(24, 100)
+        val clamped = distance.coerceIn(18, 80)
         prefs.edit().putInt(KEY_PULL_DISTANCE, clamped).apply()
         _pullDistanceDp.value = clamped
     }
@@ -71,21 +71,49 @@ class ServicePreferences(private val context: Context) {
 
     private fun loadTriggersInternal(): List<TriggerModel> {
         val file = File(context.filesDir, "triggers.json")
-        val jsonStr = if (file.exists()) {
-            file.readText()
-        } else {
+        var triggersList: List<TriggerModel> = emptyList()
+        if (file.exists()) {
             try {
-                context.assets.open("triggers.json").bufferedReader().use { it.readText() }
+                triggersList = json.decodeFromString<List<TriggerModel>>(file.readText())
             } catch (t: Throwable) {
-                "[]"
+                // File unreadable or empty, will fall back to assets
             }
         }
-        return try {
-            json.decodeFromString(jsonStr)
-        } catch (t: Throwable) {
-            emptyList()
+        if (triggersList.isEmpty()) {
+            triggersList = try {
+                context.assets.open("triggers.json").bufferedReader().use {
+                    json.decodeFromString<List<TriggerModel>>(it.readText())
+                }
+            } catch (t: Throwable) {
+                defaultFallbackTriggers()
+            }
+            saveTriggers(triggersList)
         }
+        return triggersList
     }
+
+    private fun defaultFallbackTriggers(): List<TriggerModel> = listOf(
+        TriggerModel(
+            id = "right-swipe",
+            edge = "right",
+            gesture = "swipe-hold",
+            fromPct = 20,
+            toPct = 70,
+            thicknessPx = 28,
+            script = "abdm-add-download",
+            comment = "Swipe inward from right edge and hold: open AB DM Add Download"
+        ),
+        TriggerModel(
+            id = "left-swipe",
+            edge = "left",
+            gesture = "swipe-hold",
+            fromPct = 25,
+            toPct = 75,
+            thicknessPx = 28,
+            script = "snip-to-clipboard",
+            comment = "Swipe inward from left edge and hold: screen snip to clipboard"
+        )
+    )
 
     companion object {
         private const val KEY_SERVICE_ENABLED = "flick_service_enabled"

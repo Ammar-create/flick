@@ -204,7 +204,7 @@ fun MainScreen(viewModel: MainViewModel) {
             gesture = "swipe-hold",
             fromPct = 25,
             toPct = 65,
-            thicknessPx = 16,
+            thicknessPx = 28,
             script = if (state.installedPlugins.isNotEmpty()) state.installedPlugins.first().id else "abdm-add-download"
         )
 
@@ -300,10 +300,8 @@ private fun DashboardTab(
                 GroupedCard(
                     position = GroupedPosition.First,
                     onClick = {
-                        if (!state.isAccessibilityActive) {
-                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                            context.startActivity(intent)
-                        }
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        context.startActivity(intent)
                     }
                 ) {
                     Row(
@@ -598,7 +596,7 @@ private fun ZoneEditorTab(
                     Slider(
                         value = pullDistanceDp.toFloat(),
                         onValueChange = { onUpdatePullDistance(it.toInt()) },
-                        valueRange = 24f..100f,
+                        valueRange = 18f..80f,
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
                             activeTrackColor = MaterialTheme.colorScheme.primary
@@ -1043,11 +1041,11 @@ private fun TriggerEditDialog(
                     colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
                 )
 
-                Text("Touch Zone Thickness: ${thickness.toInt()}dp (Recommended: 14-18dp)", style = MaterialTheme.typography.labelSmall)
+                Text("Touch Zone Thickness: ${thickness.toInt()}dp (Recommended: 24-32dp)", style = MaterialTheme.typography.labelSmall)
                 Slider(
                     value = thickness,
                     onValueChange = { thickness = it },
-                    valueRange = 8f..32f,
+                    valueRange = 16f..48f,
                     colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
                 )
             }

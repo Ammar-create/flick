@@ -4,8 +4,8 @@
     "edge": "right",
     "gesture": "swipe-hold",
     "fromPct": 20,
-    "toPct": 65,
-    "thicknessPx": 16,
+    "toPct": 70,
+    "thicknessPx": 28,
     "script": "abdm-add-download",
     "args": {},
     "comment": "Swipe inward from right edge and hold: open AB DM Add Download sheet for clipboard URL."
@@ -14,11 +14,11 @@
     "id": "left-swipe",
     "edge": "left",
     "gesture": "swipe-hold",
-    "fromPct": 30,
-    "toPct": 70,
-    "thicknessPx": 16,
+    "fromPct": 25,
+    "toPct": 75,
+    "thicknessPx": 28,
     "script": "snip-to-clipboard",
     "args": {},
-    "comment": "Swipe inward from left edge and hold: STUB region snip to clipboard."
+    "comment": "Swipe inward from left edge and hold: screen snip to clipboard."
   }
 ]

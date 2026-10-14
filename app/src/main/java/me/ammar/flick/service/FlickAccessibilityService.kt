@@ -79,6 +79,12 @@ class FlickAccessibilityService : AccessibilityService() {
         // Accessibility event processing if needed
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        Log.i(TAG, "Orientation changed, updating edge overlay positions")
+        overlayManager?.refreshOrientation()
+    }
+
     fun dispatchTap(x: Float, y: Float) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
             val path = android.graphics.Path().apply {
